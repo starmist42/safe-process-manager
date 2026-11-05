@@ -34,7 +34,7 @@ Windows 下跑多个 Python 微服务 / Electron 客户端时，任务管理器�
 
 > 注：本工具为通用进程管家，同样完美适用于所有 Python 微服务与 Electron 客户端架构。
 
-![控制台界面](assets/screenshot.png)
+![控制台界面](assets/screenshot.jpg)
 
 ## 特性
 
