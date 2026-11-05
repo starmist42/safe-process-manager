@@ -335,7 +335,7 @@ async def api_force_kill(req: Request) -> JSONResponse:
     if not svc:
         return JSONResponse({"ok": False, "error": "unknown service"}, status_code=404)
     st = state_of(svc["id"])
-    pids = set(st.get("warning", {}).get("pids") or []) | set(ensure_binding(svc))
+    pids = set((st.get("warning") or {}).get("pids") or []) | set(ensure_binding(svc))
     killed, skipped = [], []
     for pid in pids:
         if pid == OWN_PID:
@@ -346,6 +346,16 @@ async def api_force_kill(req: Request) -> JSONResponse:
             killed.append(pid)
         except Exception:
             skipped.append(pid)
+    # 等一小会儿再核实，避免误报“已杀”
+    if os.name == "nt" and killed:
+        await asyncio.sleep(0.4)
+    still = [p for p in killed if is_alive(p)]
+    if still:
+        st["status"] = "Warning"
+        st["warning"] = {"pids": still, "diag": diagnostics(svc, still),
+                         "since": datetime.now().isoformat(timespec="seconds")}
+        log(f"{svc['name']}：强杀后仍有进程存活 {still}（可能受保护/权限不足）")
+        return JSONResponse({"ok": False, "error": f"仍有进程存活：{still}", "killed": killed, "skipped": skipped}, status_code=409)
     st["status"] = "Stopped"
     st["warning"] = None
     st["bound"].clear()

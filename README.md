@@ -1,5 +1,14 @@
 # Local Process Manager
 
+![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)
+![MCP Server](https://img.shields.io/badge/MCP-Server-6f42c1)
+![Electron](https://img.shields.io/badge/Electron-App-47848F)
+![DSH](https://img.shields.io/badge/DSH-Agent-ff4fd8)
+![DeepSeek](https://img.shields.io/badge/DeepSeek-4D6BFE)
+
+**Topics：** `dsh` · `deepseek` · `mcp-server` · `ai-companion` · `electron-app` · `process-manager` · `python` · `sqlite`
+
 Windows 下跑多个 Python 微服务 / Electron 客户端时，任务管理器强杀常导致 SQLite 死锁和显存泄漏。本工具提供了一个带 Web UI 的控制台，支持优雅关闭、超时预警与用户终审。
 
 ## 环境与适用性
@@ -16,6 +25,14 @@ Windows 下跑多个 Python 微服务 / Electron 客户端时，任务管理器�
 - **Linux / macOS** 等非 Windows 系统（本工具深度依赖 Win32 API）
 - 基于 **Docker 容器**部署的服务（Docker 自带优雅停机机制，无需额外接管）
 - **无状态、单进程的简单脚本**（直接关闭即可）
+
+## 场景比喻
+
+**🛡️ 给你的本地 AI 伴侣保驾护航（以“大肥鱼 / DSH”为例）**
+
+如果你正在本地运行类似“大肥鱼”的 AI 智能体（包含 Electron 界面、长记忆 SQLite 数据库、多个 MCP 后台服务），它就像一个有生命的复杂器官集合。直接拔电源或用任务管理器“一刀切”强杀，极易导致她的“记忆库”损坏或“显存”泄漏。本工具通过安全缓冲与用户终审机制，确保她每次休眠都能安全落盘。
+
+> 注：本工具为通用进程管家，同样完美适用于所有 Python 微服务与 Electron 客户端架构。
 
 ![控制台界面](assets/screenshot.png)
 
@@ -59,3 +76,4 @@ python manager_server.py
 - 不能防物理断电，重要数据请自行备份
 
 MIT License
+

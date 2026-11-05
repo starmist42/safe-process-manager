@@ -35,16 +35,16 @@ def main() -> int:
     if not port_ready():
         pythonw = Path(sys.executable).with_name("pythonw.exe")
         exe = str(pythonw) if pythonw.exists() else sys.executable
-        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        subprocess.Popen(
-            [exe, str(BASE / "manager_server.py")],
-            cwd=str(BASE),
-            creationflags=flags,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            close_fds=True,
-        )
+        # CREATE_BREAKAWAY_FROM_JOB：让管家脱离启动者所在的 Job Object
+        base_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        breakaway = getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+        cmd = [exe, str(BASE / "manager_server.py")]
+        common = dict(cwd=str(BASE), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                      stderr=subprocess.DEVNULL, close_fds=True)
+        try:
+            subprocess.Popen(cmd, creationflags=base_flags | breakaway, **common)
+        except OSError:
+            subprocess.Popen(cmd, creationflags=base_flags, **common)
         deadline = time.time() + 5.0
         while time.time() < deadline and not port_ready():
             time.sleep(0.5)

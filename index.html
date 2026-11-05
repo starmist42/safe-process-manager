@@ -136,7 +136,6 @@ async function refresh(){
           <button onclick="act('start','${s.id}')">启动</button>
           <button class="stop" onclick="act('stop','${s.id}')">安全关闭</button>
           ${s.status==='Warning'?`<button class="force" onclick="forceKill('${s.id}','${esc(s.name)}')">强制终止（高危）</button>`:''}
-          ${s.status==='Warning'?`<button class="force" onclick="forceKill('${s.id}','${esc(s.name)}')">强制终止（高危）</button>`:''}
           ${(s.candidates && s.candidates.length)?`<button onclick="rebind('${s.id}')">重新绑定 (${s.candidates.join(',')})</button>`:''}
           <button class="remove" title="从配置移除" onclick="removeService('${s.id}','${esc(s.name)}')">×</button>
         </div>
