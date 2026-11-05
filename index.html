@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本地进程管家</title>
+<style>
+  :root{--cy:#5ff3ff;--pink:#ff4fd8;--line:rgba(95,243,255,.18);--bg:#04070c}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:#d6eefc;
+    font-family:"Microsoft YaHei",system-ui,sans-serif}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at 50% -10%,rgba(30,120,170,.22),transparent 55%)}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 280px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  h1{font-size:20px;letter-spacing:.22em;margin:0;color:#eafcff;text-shadow:0 0 20px rgba(95,243,255,.5)}
+  .sub{font-size:11px;letter-spacing:.3em;color:rgba(150,205,235,.5);margin-top:4px}
+  .danger{background:linear-gradient(135deg,rgba(255,60,80,.9),rgba(255,79,216,.7));
+    border:1px solid #ff5f7a;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;
+    cursor:pointer;letter-spacing:.08em;box-shadow:0 0 24px rgba(255,60,90,.35)}
+  .danger:hover{filter:brightness(1.15)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+  .card{background:rgba(8,16,24,.66);border:1px solid var(--line);border-radius:16px;padding:18px;
+    backdrop-filter:blur(12px);position:relative;overflow:hidden}
+  .card.warn{border-color:rgba(255,179,71,.55);box-shadow:0 0 26px rgba(255,160,60,.12)}
+  .card .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .name{font-size:15px;font-weight:600;color:#eafcff}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle}
+  .dot.run{background:#4dff9e;box-shadow:0 0 12px #4dff9e}
+  .dot.stop{background:#4a5866}
+  .dot.warn{background:#ffb347;animation:blink .7s steps(1) infinite;box-shadow:0 0 12px #ffb347}
+  @keyframes blink{50%{opacity:.15}}
+  .meta{font-size:11.5px;color:rgba(160,205,230,.65);line-height:1.9;letter-spacing:.03em}
+  .meta b{color:var(--cy);font-weight:500}
+  .btns{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  button{background:rgba(95,243,255,.08);border:1px solid var(--line);color:#dff6ff;
+    border-radius:10px;padding:8px 14px;font-size:12.5px;cursor:pointer;transition:.18s}
+  button:hover{border-color:var(--cy);box-shadow:0 0 16px rgba(95,243,255,.25)}
+  button.stop{border-color:rgba(255,179,71,.4)}
+  button.force{border-color:#ff5f7a;color:#ffd9df;background:rgba(255,60,90,.18);
+    animation:pulse 1.4s infinite}
+  @keyframes pulse{50%{box-shadow:0 0 18px rgba(255,60,90,.55)}}
+  .diag{margin-top:12px;padding:10px;border-radius:10px;background:rgba(255,179,71,.06);
+    border:1px dashed rgba(255,179,71,.35);font-size:11px;line-height:1.7;color:#ffd9a8}
+  .logbox{position:fixed;left:0;right:0;bottom:0;height:250px;background:rgba(2,6,10,.96);
+    border-top:1px solid var(--line);display:flex;flex-direction:column;z-index:20}
+  .logbox h3{margin:0;padding:10px 18px;font-size:11px;letter-spacing:.28em;color:rgba(150,205,235,.6);
+    border-bottom:1px solid rgba(95,243,255,.1)}
+  #log{flex:1;overflow:auto;padding:10px 18px;font-family:Consolas,monospace;font-size:11.5px;
+    line-height:1.8;color:#9fd7ef;white-space:pre-wrap}
+  #log .w{color:#ffb347}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;
+    justify-content:center;z-index:30}
+  .modal.on{display:flex}
+  .panel{width:520px;max-width:92vw;background:#08121b;border:1px solid var(--line);
+    border-radius:16px;padding:24px;box-shadow:0 0 60px rgba(95,243,255,.15)}
+  .panel h2{margin:0 0 16px;font-size:15px;letter-spacing:.14em;color:var(--cy)}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:11px;color:rgba(160,205,230,.6);margin-bottom:5px;letter-spacing:.1em}
+  .field input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--line);
+    border-radius:9px;padding:10px 12px;color:#eafcff;font-size:12.5px;outline:none}
+  .field input:focus{border-color:var(--cy)}
+  .panel .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+  .toast{position:fixed;right:24px;top:24px;background:rgba(8,20,28,.95);border:1px solid var(--line);
+    border-radius:10px;padding:12px 16px;font-size:12px;color:#cfefff;opacity:0;transition:.3s;z-index:40}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>本地进程管家</h1>
+      <div class="sub">进程守护 · 绝不自动强杀</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="openAdd()">＋ 添加软件</button>
+      <button class="danger" onclick="sleepAll()">一键安全休眠所有服务</button>
+    </div>
+  </header>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="logbox">
+  <h3>控制台 · 实时反馈</h3>
+  <div id="log"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="panel">
+    <h2>添加受管软件</h2>
+    <div class="field"><label>显示名称</label><input id="f-name" placeholder="如：我的下载器"></div>
+    <div class="field"><label>进程关键词（psutil 匹配 cmdline/name）</label><input id="f-key" placeholder="如：longmem_server.py"></div>
+    <div class="field"><label>启动命令</label><input id="f-cmd" placeholder="e.g. pythonw.exe C:\YourPath\App\main.py"></div>
+    <div class="field"><label>工作目录（可选）</label><input id="f-dir" placeholder="C:\YourPath\App"></div>
+    <div class="field"><label>软关闭缓冲（秒）</label><input id="f-timeout" value="15"></div>
+    <div class="row">
+      <button onclick="closeAdd()">取消</button>
+      <button onclick="submitAdd()">保存到配置</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let lastSeq = 0;
+const STATUS_TEXT = { Running: '运行中', Stopped: '已停止', Warning: '警告', Stopping: '关闭中' };
+const $ = (id) => document.getElementById(id);
+const toast = (t) => { const el=$('toast'); el.textContent=t; el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),2600); };
+
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function refresh(){
+  try{
+    const data = await (await fetch('/api/status')).json();
+    $('grid').innerHTML = data.services.map(s => {
+      const cls = s.status==='Warning' ? 'warn' : '';
+      const dot = s.status==='Running'?'run':(s.status==='Warning'?'warn':'stop');
+      const pid = s.pids && s.pids.length ? s.pids.join(', ') : '—';
+      let diag = '';
+      if (s.warning) {
+        const d = s.warning.diag || {};
+        const wal = (d.wal||[]).map(w=>`${w.file.split(/[\\/]/).pop()} ${w.mb}MB`).join('、') || '未检测到 WAL';
+        const procs = (d.processes||[]).map(p=>`PID ${p.pid} CPU ${p.cpu}% / ${p.mem_mb}MB`).join('；');
+        diag = `<div class="diag">⚠ 软关闭超时（${esc(s.warning.since)}）<br>${esc(procs)}<br>WAL：${esc(wal)}<br>建议再等一会儿，或确认后人工强杀。</div>`;
+      }
+      return `<div class="card ${cls}">
+        <div class="top"><div class="name"><span class="dot ${dot}"></span>${esc(s.name)}</div>
+          <div class="meta">${esc(STATUS_TEXT[s.status] || s.status)}</div></div>
+        <div class="meta">PID：<b>${esc(pid)}</b><br>CPU：<b>${s.cpu}%</b> · 内存：<b>${s.mem_mb} MB</b><br>软关闭缓冲：${s.timeout}s</div>
+        ${diag}
+        <div class="btns">
+          <button onclick="act('start','${s.id}')">启动</button>
+          <button class="stop" onclick="act('stop','${s.id}')">安全关闭</button>
+          ${s.status==='Warning'?`<button class="force" onclick="forceKill('${s.id}','${esc(s.name)}')">强制终止（高危）</button>`:''}
+          ${(s.candidates && s.candidates.length)?`<button onclick="rebind('${s.id}')">重新绑定 (${s.candidates.join(',')})</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ /* 静默 */ }
+}
+
+async function act(kind, id){
+  try{
+    const r = await fetch('/api/'+kind,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});
+    const d = await r.json();
+    toast(d.ok ? (d.message || '已发送') : ('失败：'+(d.error||'')));
+    refresh();
+  }catch(e){ toast('请求失败：'+e); }
+}
+
+async function forceKill(id, name){
+  if(!confirm(`确认要强制终止「${name}」吗？\n这会导致未落盘的数据丢失，且只有你点击后才会执行。`)) return;
+  const r = await fetch('/api/force_kill',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({id, confirm:true})});
+  const d = await r.json();
+  toast(d.ok ? `已强杀 ${d.killed.join(', ')}` : ('失败：'+(d.error||'')));
+  refresh();
+}
+
+async function rebind(id){
+  const r = await fetch('/api/rebind',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});
+  const d = await r.json();
+  toast(d.ok ? `已绑定 PID ${d.pids.join(', ')||'—'}` : '绑定失败');
+  refresh();
+}
+
+async function sleepAll(){
+  if(!confirm('确认对所有受管服务发送软关闭吗？\n超时只会警告，不会自动强杀。')) return;
+  const r = await fetch('/api/sleep_all',{method:'POST'});
+  const d = await r.json();
+  toast(d.ok ? '已对所有服务发送软关闭，进入缓冲期' : '失败');
+  refresh();
+}
+
+async function pollLogs(){
+  try{
+    const d = await (await fetch('/api/logs?after='+lastSeq)).json();
+    if(d.logs.length){
+      const box=$('log');
+      for(const l of d.logs){
+        lastSeq = Math.max(lastSeq, l.seq);
+        const div=document.createElement('div');
+        div.textContent = `[${l.time.slice(11,19)}] ${l.msg}`;
+        if(l.msg.includes('超时')||l.msg.includes('WAL')) div.className='w';
+        box.appendChild(div);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+  }catch(e){}
+}
+
+function openAdd(){ $('modal').classList.add('on'); }
+function closeAdd(){ $('modal').classList.remove('on'); }
+async function submitAdd(){
+  const body = {
+    name: $('f-name').value.trim(),
+    keyword: $('f-key').value.trim(),
+    start_cmd: $('f-cmd').value.trim(),
+    work_dir: $('f-dir').value.trim(),
+    graceful_timeout: parseInt($('f-timeout').value)||15
+  };
+  const r = await fetch('/api/config',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  const d = await r.json();
+  if(d.ok){ closeAdd(); toast('已写入 manager_config.json'); refresh(); }
+  else toast('保存失败：'+(d.error||''));
+}
+
+refresh(); pollLogs();
+setInterval(refresh, 2000);
+setInterval(pollLogs, 1500);
+</script>
+</body>
+</html>

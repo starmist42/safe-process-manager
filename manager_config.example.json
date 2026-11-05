@@ -1,0 +1,20 @@
+{
+  "services": [
+    {
+      "id": "my-python-app",
+      "name": "My Python App",
+      "keywords": ["my_app.py"],
+      "start_cmd": "pythonw.exe C:\\YourPath\\App\\my_app.py",
+      "work_dir": "C:\\YourPath\\App",
+      "graceful_timeout": 15
+    },
+    {
+      "id": "my-gui-app",
+      "name": "My GUI App",
+      "keywords": ["MyGuiApp.exe"],
+      "start_cmd": "C:\\YourPath\\App\\MyGuiApp.exe",
+      "work_dir": "C:\\YourPath\\App",
+      "graceful_timeout": 20
+    }
+  ]
+}
