@@ -434,6 +434,35 @@ def api_logs(after: int = 0) -> JSONResponse:
     return JSONResponse({"logs": [x for x in LOGS if x["seq"] > after]})
 
 
+
+@app.post("/api/remove_service")
+async def api_remove_service(req: Request) -> JSONResponse:
+    """从配置中移除服务；只改 manager_config.json，不碰任何本地文件。"""
+    body = await req.json()
+    sid = body.get("id") or body.get("service_id") or ""
+    svc = svc_by_id(sid)
+    if not svc:
+        return JSONResponse({"ok": False, "error": "unknown service"}, status_code=404)
+
+    # 安全闸：只要还能找到活着的匹配进程，就拒绝移除
+    live = ensure_binding(svc)
+    if not live:
+        live = discover_pids(svc)
+    if live:
+        return JSONResponse(
+            {"ok": False, "error": "请先安全关闭该服务，再执行移除操作。"},
+            status_code=400,
+        )
+
+    cfg = load_cfg()
+    before = len(cfg.get("services", []))
+    cfg["services"] = [s for s in cfg.get("services", []) if s.get("id") != sid]
+    save_cfg(cfg)
+    STATE.pop(sid, None)
+    log(f"已从配置移除服务：{svc.get('name', sid)}（仅删除配置项）")
+    return JSONResponse({"ok": True, "removed": sid, "remaining": len(cfg["services"]), "before": before})
+
+
 @app.get("/api/config")
 def api_config() -> JSONResponse:
     return JSONResponse(load_cfg())
